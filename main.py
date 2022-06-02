@@ -1,4 +1,3 @@
-from asyncio.windows_events import NULL
 from pygame import *
 import sys
 import pyganim
