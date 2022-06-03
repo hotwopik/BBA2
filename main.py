@@ -1,12 +1,48 @@
 from pygame import *
 import sys
 import pyganim
+import random
 #init
 init()
 size = width,height = 1000,800
 screen=display.set_mode(size)
 display.set_caption("Blue Ball Adventure 2")
 display.set_icon(image.load("assets/icon.png"))
+#levels
+levels=[
+    [["                    ",
+      "                    ",
+      "                    ",
+      "                    ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "= P                 ",
+      "--------------------"],
+      ["                    ",
+      "                    ",
+      "                    ",
+      "                    ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_                   ",
+      "_            --     ",
+      "= P         ----    ",
+      "--------------------"]]
+]
 #game conf
 mm_bg=image.load("assets/mm_bg.png")
 gm_bg=image.load("assets/gm_bg.png")
@@ -20,12 +56,11 @@ player_height = 50
 jump_power = 8
 gravity = 0.2
 player_color =  "#00FFE9"
-minx = -1
+level=0
 #game objects
 drawed=sprite.Group()
 colided=[]
 menui=[]
-player=[""]
 def passes():
     pass
 class Menu_item(sprite.Sprite):
@@ -42,10 +77,17 @@ class Menu_item(sprite.Sprite):
         if mouse[0] > self.x and mouse[0] < (self.dx+self.x) and mouse[1] > self.y and mouse[1] < (self.dy+self.y) and click:
             self.onclick()
         screen.blit(self.pict,(self.x,self.y))
-class Grass_platform(sprite.Sprite):
-    def __init__(self,x,y):
+class Platform(sprite.Sprite):
+    def __init__(self,x,y,state=0):
         sprite.Sprite.__init__(self)
-        self.image = image.load("assets/platforms/grass.png")
+        if state == 0:
+            self.image = image.load("assets/platforms/grass.png")
+        elif state == 1:
+            self.image = image.load("assets/platforms/old_platform.png")
+        elif state == 2:
+            self.image = image.load("assets/platforms/old_enter.png")
+        else:
+            self.image = image.load("assets/platforms/grass.png")
         self.rect = Rect(x,y,pl_size,pl_size)
         colided.append(self)
         drawed.add(self)
@@ -59,7 +101,6 @@ class Player(sprite.Sprite):
         self.rect = Rect(x,y,player_width,player_height)
         self.ongraund=False
         self.turn=False
-        player[0]=self
         drawed.add(self)
         #animation
         self.image = Surface((player_width,player_height))
@@ -117,21 +158,46 @@ class Player(sprite.Sprite):
                 if yspeed < 0:
                     self.rect.top = p.rect.bottom
                     self.yspeed = 0
-        if self.rect.x <= minx:
+        if self.rect.x <= -1:
             self.rect.x = 0
             self.xspeed = 0
+class Camera(object):
+    def __init__(self,width,height):
+        self.rect = Rect(0,0,width,height)
+    def move(self,moveble):
+        return moveble.rect.move(self.rect.topleft)
+    def update(self,player):
+        l, t, _, _ = player.rect
+        _, _, w, h = self.rect
+        l, t = -l+width / 2, -t+height / 2
+        l = min(0, l)
+        l = max(-(self.rect.width-width), l)
+        t = max(-(self.rect.height-height), t)
+        t = min(0, t)
+        self.rect = Rect(l, t, w, h)
 #game proces
 def gamepr():
+    level_var=random.randint(0,len(levels[level])-1)
+    level_width=len(levels[level][level_var][0])*pl_size
+    level_height=len(levels[level][level_var])*pl_size
     xgn=ygn=0
     left_press=right_press=up_press=f_press=False
-    for a in range(1,17):
-        for b in range(0,20):
-            if a == 16:
-                Grass_platform(xgn,ygn)
+    #level gen
+    for l in levels[level][level_var]:
+        for n in l:
+            if n == "P":
+                player = Player(xgn,ygn)
+            if n == "-":
+                Platform(xgn,ygn)
+            if n == "_":
+                Platform(xgn,ygn,1)
+            if n == "=":
+                Platform(xgn,ygn,2)
             xgn+=pl_size
         ygn+=pl_size
         xgn=0
-    Player(0,15)
+    #game cicle
+    camera = Camera(level_width,level_height)
     while not end:
         timen.tick(fps)
         for e in event.get():
@@ -148,6 +214,8 @@ def gamepr():
                 if e.key == K_RIGHT or e.key == K_d:
                     right_press = True
                 if e.key == K_ESCAPE:
+                    drawed.empty()
+                    colided.clear()
                     return
             if e.type == KEYUP:
                 if e.key == K_UP or e.key == K_w or e.key == K_SPACE:
@@ -160,8 +228,9 @@ def gamepr():
                     right_press = False
         screen.blit(gm_bg,(0,0))
         for e in drawed:
-            screen.blit(e.image,(e.rect.left,e.rect.top))
-        player[0].update(left_press,right_press,up_press,colided)
+            screen.blit(e.image,camera.move(e))
+        player.update(left_press,right_press,up_press,colided)
+        camera.update(player)
         display.update()
 #menu init
 #48, Corbel
